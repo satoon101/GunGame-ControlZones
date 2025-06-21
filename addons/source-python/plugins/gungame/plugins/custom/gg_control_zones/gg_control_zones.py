@@ -1,6 +1,6 @@
 # ../gungame/plugins/custom/gg_control_zones/gg_control_zones.py
 
-"""."""
+"""GunGame players level up/down as a team by controlling zones on the map."""
 
 # =============================================================================
 # >> IMPORTS
