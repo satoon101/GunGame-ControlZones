@@ -10,6 +10,7 @@ from operator import attrgetter
 
 # Source.Python
 from events import Event
+from events.hooks import EventAction, PreEvent
 from filters.players import PlayerIter
 from listeners.tick import Delay
 from players.teams import teams_by_number
@@ -17,8 +18,10 @@ from plugins.manager import plugin_manager
 
 # Plugin
 from gungame.core.events.included.teams import GG_Team_Level_Up, GG_Team_Win
+from gungame.core.messages.hooks import MessagePrefixHook
 from gungame.core.players.attributes import AttributePreHook
 from gungame.core.players.dictionary import player_dictionary
+from gungame.core.sounds.hooks import SoundHook
 from gungame.core.teams import team_levels
 from gungame.core.weapons.manager import weapon_order_manager
 
@@ -81,11 +84,11 @@ def _captured_control_zone(game_event):
     team = int(game_event["team"])
     old_level = team_levels[team]
     team_levels[team] += 1
-    _set_player_levels(team, reason="captured")
-    if team_levels[team] >= weapon_order_manager.max_levels:
+    if team_levels[team] > weapon_order_manager.max_levels:
         Delay(0, _fire_team_win, (team,))
         return
 
+    _set_player_levels(team, reason="captured")
     with GG_Team_Level_Up() as event:
         event.team = team
         event.old_level = old_level
@@ -106,3 +109,29 @@ def _set_player_levels(team, reason):
             player_dictionary[player.userid],
             f"{reason_to_method[reason]}_level",
         )(1, f"control_zone_{reason}")
+
+
+# =============================================================================
+# >> EVENT HOOKS
+# =============================================================================
+@PreEvent("gg_level_up", "gg_win")
+def _block_level_up(game_event):
+    return EventAction.BLOCK
+
+
+# =============================================================================
+# >> MESSAGE HOOKS
+# =============================================================================
+@MessagePrefixHook("LevelInfo:")
+def _level_info_hook(message_name, message_prefix):
+    """Hooks the LevelInfo messages so that the team messages can be sent."""
+    return False
+
+
+# =============================================================================
+# >> SOUND HOOKS
+# =============================================================================
+@SoundHook("multi_kill")
+def _suppress_multi_kill_sound(sound_name):
+    """Stop the multi-kill sound from spamming."""
+    return False
